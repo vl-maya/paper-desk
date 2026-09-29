@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Paper Desk
 
-## Getting Started
+Offline-first task, note, and schedule manager for managers. **Outbound** tasks are work you assign and deliver; **inbound** tasks are requests you receive. JSON files on disk are the source of truth; IndexedDB mirrors the workspace in the browser.
 
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:8097](http://localhost:8097) (default port from [`.env.example`](.env.example) / `.env`). On first load the app initializes `data/workspace/` via the local API.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional: copy the sample workspace:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+node scripts/seed-example.mjs
+cp -R data/workspace.example data/workspace
+```
 
-## Learn More
+Or use **Settings → Load example workspace**.
 
-To learn more about Next.js, take a look at the following resources:
+## Workspace layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | Contents |
+|------|----------|
+| `manifest.json` | Version and last modified |
+| `settings.json` | WIP limit, sort defaults, AI defaults |
+| `assignees.json` | Assignee list |
+| `inbound/tasks.json` | Inbound tasks |
+| `outbound/tasks.json` | Outbound tasks |
+| `links.json` | Inbound → outbound links |
+| `notes/index.json` + `notes/{id}.md` | Notes |
+| `schedule/events.json` | Standalone events |
+| `audit.log.jsonl` | Append-only audit trail |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Override the data directory:
 
-## Deploy on Vercel
+```bash
+PAPER_DESK_DATA_DIR=/path/to/workspace pnpm dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## WIP and backlog
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Configure **WIP limit** in Settings. Active tasks (`todo`, `in_progress`, not in backlog) count toward the limit. New or promoted tasks overflow into **backlog** automatically.
+
+## Ask desk
+
+Full reference: [docs/ask-desk.md](docs/ask-desk.md) (API, architecture, pages, capabilities, AI).
+
+Use template chips for **mechanical** answers (no API tokens). Enable **Use AI** for free-form questions via local CLI:
+
+- **Claude**: `claude -p "..." --model ...` (haiku, sonnet, opus, fable)
+- **Cursor**: `agent -p "..." --model ...` (requires Cursor CLI on PATH)
+
+AI routes only work when running `pnpm dev` or `pnpm start` locally.
+
+## Browser folder mode
+
+**Settings → Change save folder…** uses the File System Access API (Chromium). Same JSON layout as `data/workspace/`; writes go directly to the chosen folder.
+
+- **Empty folder** (no `manifest.json`): your current workspace is copied there, then that folder becomes the save location.
+- **Existing workspace** (`manifest.json` present): that workspace is loaded and becomes the save location.
+
+Use **Export workspace JSON** in Settings for a one-time snapshot backup.
+
+## Scripts
+
+```bash
+pnpm lint
+pnpm build
+node scripts/seed-example.mjs
+```
+
+## Electron (later)
+
+See [docs/electron.md](docs/electron.md).

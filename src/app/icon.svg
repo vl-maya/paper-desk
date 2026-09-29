@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#fffcf5"/>
+  <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="6.25" stroke="#e8dfd0" stroke-width="1.5"/>
+  <rect x="4.5" y="6" width="11" height="11.5" rx="1.5" stroke="#8b7355" stroke-width="1.25"/>
+  <path d="M4.5 9.5h11" stroke="#8b7355" stroke-width="1.25" stroke-linecap="round"/>
+  <path d="M7.25 6v2M11.75 6v2" stroke="#8b7355" stroke-width="1.25" stroke-linecap="round"/>
+  <rect x="6" y="11" width="2.2" height="2.2" rx="0.4" fill="#e8dfd0"/>
+  <rect x="9.1" y="11" width="2.2" height="2.2" rx="0.4" fill="#e8dfd0"/>
+  <rect x="12.2" y="11" width="2.2" height="2.2" rx="0.4" fill="#8b7355"/>
+  <rect x="6" y="14.1" width="2.2" height="2.2" rx="0.4" fill="#e8dfd0"/>
+  <rect x="9.1" y="14.1" width="2.2" height="2.2" rx="0.4" fill="#e8dfd0"/>
+  <path d="M18.5 8.5h9" stroke="#3d3428" stroke-width="1.35" stroke-linecap="round"/>
+  <text x="18" y="9.25" fill="#8b7355" font-family="ui-sans-serif,system-ui,sans-serif" font-size="4.5" font-weight="600">1</text>
+  <path d="M18.5 13h9" stroke="#3d3428" stroke-width="1.35" stroke-linecap="round"/>
+  <text x="18" y="13.75" fill="#8b7355" font-family="ui-sans-serif,system-ui,sans-serif" font-size="4.5" font-weight="600">2</text>
+  <path d="M18.5 17.5h7" stroke="#3d3428" stroke-width="1.35" stroke-linecap="round"/>
+  <text x="18" y="18.25" fill="#8b7355" font-family="ui-sans-serif,system-ui,sans-serif" font-size="4.5" font-weight="600">3</text>
+  <path d="M6 22.5h20" stroke="#6b5f4f" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M6 25h16" stroke="#6b5f4f" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M6 27.5h18" stroke="#6b5f4f" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="5" cy="22.5" r="1" fill="#8b7355"/>
+</svg>

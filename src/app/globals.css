@@ -1,26 +1,230 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f7f3ea;
+  --paper-line: #e8dfd0;
+  --ink: #3d3428;
+  --ink-muted: #6b5f4f;
+  --accent: #8b7355;
+  --card: #fffcf5;
+  --shadow: rgba(61, 52, 40, 0.08);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-paper-line: var(--paper-line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-card: var(--card);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-serif: var(--font-source-serif);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.paper-bg {
+  background-color: var(--paper);
+}
+
+.paper-card {
+  background: var(--card);
+  border: 1px solid var(--paper-line);
+  box-shadow: 0 2px 8px var(--shadow);
+  border-radius: 4px;
+}
+
+.schedule-day-today {
+  border: 2px solid var(--accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 2px 8px var(--shadow);
+}
+
+/* Ask desk — Markdown / GFM (tables, lists) */
+.ask-markdown {
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.ask-markdown h1,
+.ask-markdown h2,
+.ask-markdown h3 {
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+}
+
+.ask-markdown h1 {
+  font-size: 1.25rem;
+}
+.ask-markdown h2 {
+  font-size: 1.125rem;
+}
+.ask-markdown h3 {
+  font-size: 1rem;
+}
+
+.ask-markdown p {
+  margin: 0.5em 0;
+}
+
+.ask-markdown ul,
+.ask-markdown ol {
+  margin: 0.5em 0;
+  padding-left: 1.35rem;
+  list-style-position: outside;
+}
+
+.ask-markdown ul {
+  list-style-type: disc;
+}
+
+.ask-markdown ol {
+  list-style-type: decimal;
+}
+
+.ask-markdown ul ul {
+  list-style-type: circle;
+  margin-top: 0.25em;
+}
+
+.ask-markdown ol ol {
+  list-style-type: lower-alpha;
+}
+
+.ask-markdown li {
+  display: list-item;
+  margin: 0.25em 0;
+}
+
+.ask-markdown strong {
+  font-weight: 600;
+}
+
+.ask-markdown a,
+.ask-markdown-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.ask-markdown a:hover,
+.ask-markdown-link:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+.ask-markdown code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.85em;
+  background: var(--paper-line);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+.ask-markdown pre {
+  overflow-x: auto;
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin: 0.75em 0;
+}
+
+.ask-markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.ask-markdown-table-wrap .ask-markdown-table {
+  width: 100%;
+  min-width: 280px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.ask-markdown-table-wrap th,
+.ask-markdown-table-wrap td {
+  border: 1px solid var(--paper-line);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ask-markdown-table-wrap thead th {
+  background: var(--paper);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ask-markdown-table-wrap tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--paper) 35%, var(--card));
+}
+
+/* Task cards — preserve lists / line breaks without huge margins */
+.task-markdown h1,
+.task-markdown h2,
+.task-markdown h3 {
+  margin: 0.5em 0 0.25em;
+}
+
+.task-markdown p {
+  margin: 0.35em 0;
+}
+
+.task-markdown ul,
+.task-markdown ol {
+  margin: 0.35em 0;
+}
+
+.task-markdown li + li {
+  margin-top: 0.15em;
+}
+
+.task-markdown > :first-child {
+  margin-top: 0;
+}
+
+.task-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+/* Notes — CodeMirror / Vim uses app theme, not default purple/pink */
+.note-codemirror-editor .cm-editor {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.note-codemirror-editor .cm-content ::selection {
+  background: color-mix(in srgb, var(--accent) 38%, var(--paper-line));
+}
+
+.note-codemirror-editor .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 32%, var(--paper-line)) !important;
+}
+
+.note-codemirror-editor .cm-focused .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 38%, var(--paper-line)) !important;
+}
+
+.note-codemirror-editor .cm-fat-cursor {
+  background: var(--accent) !important;
+  color: var(--card) !important;
+}
+
+.note-codemirror-editor .cm-cursor:not(.cm-fat-cursor) {
+  border-left-color: var(--accent) !important;
+}
+
+.note-write-textarea {
+  field-sizing: content;
+  min-height: 200px;
 }
