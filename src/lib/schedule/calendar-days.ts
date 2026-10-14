@@ -5,6 +5,8 @@ import {
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
+  format,
+  getWeekOfMonth,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -30,7 +32,8 @@ export function getVisibleDays(mode: ScheduleViewMode, anchorDate: Date): Date[]
 export function formatPeriodLabel(mode: ScheduleViewMode, anchorDate: Date): string {
   if (mode === "weekly") {
     const weekStart = startOfWeek(anchorDate, { weekStartsOn: WEEK_STARTS_ON });
-    return `Week of ${formatDisplayDate(weekStart)}`;
+    const weekNum = getWeekOfMonth(weekStart, { weekStartsOn: WEEK_STARTS_ON });
+    return `Week ${weekNum}, ${format(weekStart, "MMM yyyy")}`;
   }
   return formatDisplayDate(startOfMonth(anchorDate));
 }

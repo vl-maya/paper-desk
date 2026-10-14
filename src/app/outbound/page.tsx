@@ -3,6 +3,7 @@
 import { TaskBoard } from "@/components/TaskBoard";
 import { useWipCounts } from "@/lib/store/workspace-store";
 import { WipMeter } from "@/components/WipMeter";
+import { FloatingScheduleWidget } from "@/components/schedule/FloatingScheduleWidget";
 
 export default function OutboundPage() {
   const wip = useWipCounts("outbound");
@@ -17,6 +18,7 @@ export default function OutboundPage() {
         <WipMeter label="Outbound WIP" active={wip.active} limit={wip.limit} />
       </div>
       <TaskBoard direction="outbound" view="active" />
+      <FloatingScheduleWidget />
     </div>
   );
 }

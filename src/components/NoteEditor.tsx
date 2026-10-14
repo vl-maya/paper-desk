@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { NoteMeta } from "@/lib/types/schemas";
 import { AskAnswerMarkdown } from "@/components/AskAnswerMarkdown";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { safeFormatDisplayDate } from "@/lib/dates/display";
 import {
   maxEditorHeightPx,
   NOTE_EDITOR_MIN_HEIGHT_PX,
@@ -145,13 +146,23 @@ export function NoteEditor({
     writeVimEnabledToStorage(enabled);
   }
 
+  const createdDate = safeFormatDisplayDate(note.createdAt);
+
   return (
     <div className="paper-card p-4 space-y-3">
-      <input
-        className="w-full font-serif text-lg border-b border-paper-line bg-transparent pb-1"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
+      <div>
+        <input
+          className="w-full font-serif text-lg border-b border-paper-line bg-transparent pb-1 rounded px-1.5 -mx-1.5 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent selection:bg-accent/25 selection:text-ink transition-all caret-accent"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          aria-label="Note title"
+        />
+        {createdDate && (
+          <p className="text-xs text-ink-muted mt-1" title={note.createdAt}>
+            Created {createdDate}
+          </p>
+        )}
+      </div>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
         <div className="flex gap-2">
           <button

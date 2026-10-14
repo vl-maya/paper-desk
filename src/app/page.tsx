@@ -3,8 +3,10 @@
 import { addDays, isBefore, parseISO, startOfDay } from "date-fns";
 import { formatDisplayDate } from "@/lib/dates/display";
 import { useMemo } from "react";
+import Link from "next/link";
 import { useWorkspaceStore, useWipCounts } from "@/lib/store/workspace-store";
 import { WipMeter } from "@/components/WipMeter";
+import { ScheduleCalendar } from "@/components/schedule/ScheduleCalendar";
 
 export default function DashboardPage() {
   const snapshot = useWorkspaceStore((s) => s.snapshot);
@@ -86,6 +88,24 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      <section className="mb-10">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="font-serif text-lg">Weekly schedule</h3>
+            <p className="text-xs text-ink-muted">
+              Tasks and events scheduled across this week.
+            </p>
+          </div>
+          <Link
+            href="/schedule"
+            className="text-xs font-medium text-accent hover:underline flex items-center gap-1"
+          >
+            Open full schedule →
+          </Link>
+        </div>
+        <ScheduleCalendar fixedMode="weekly" showStandaloneEvents={false} />
+      </section>
+
       <section>
         <h3 className="font-serif text-lg mb-3">Today</h3>
         {agenda.length === 0 ? (

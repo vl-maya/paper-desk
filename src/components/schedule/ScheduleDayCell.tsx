@@ -122,7 +122,7 @@ export function ScheduleDayCell({
             )}
             <ul className="space-y-1">
               {group.items.map((item, i) => (
-                <li key={itemKey(item, i)} className="text-xs min-w-0 break-words">
+                <li key={itemKey(item, i)} className="text-xs min-w-0 wrap-break-word">
                   <span className="text-ink-muted">{item.sub}</span>
                   <br />
                   {item.title}
@@ -133,19 +133,22 @@ export function ScheduleDayCell({
         ))}
         {events.length > 0 && (
           <div>
-            {taskGroups.length > 0 && (
-              <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-1">
+            <div className={`mb-1 ${compact ? "scale-90 origin-left" : ""}`}>
+              <span
+                className="inline-flex rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-sky-200 text-sky-950"
+                style={{ backgroundColor: "#bae6fd", color: "#0c4a6e" }}
+              >
                 Events
-              </p>
-            )}
+              </span>
+            </div>
             <ul className="space-y-1">
               {events.map((item, i) => (
-                <li key={itemKey(item, i)} className="text-xs min-w-0 break-words">
+                <li key={itemKey(item, i)} className="text-xs min-w-0 wrap-break-word">
                   <span className="text-ink-muted">{item.sub}</span>
                   <br />
                   <button
                     type="button"
-                    className="text-left hover:underline font-medium break-words"
+                    className="text-left hover:underline font-medium wrap-break-word"
                     onClick={() => onEventClick(item.eventId)}
                   >
                     {item.title}

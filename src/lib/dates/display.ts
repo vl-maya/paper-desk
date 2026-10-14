@@ -21,6 +21,18 @@ export function formatDisplayDate(value: string | Date): string {
   return format(d, DISPLAY_DATE_FORMAT);
 }
 
+/** Safely formats a date to ISO `yyyy-MM-dd`, returning null if invalid or undefined. */
+export function safeFormatDisplayDate(
+  value?: string | Date | null,
+): string | null {
+  if (!value) return null;
+  try {
+    return formatDisplayDate(value);
+  } catch {
+    return null;
+  }
+}
+
 /** Task due/delivery fields: always `yyyy-MM-dd`, or omitted when empty/invalid. */
 export function normalizeTaskDateField(
   value: string | undefined,
