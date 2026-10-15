@@ -14,11 +14,15 @@ import type {
   TaskLink,
   TaskStatus,
   TaskTag,
+  NoteTag,
   WorkspaceSnapshot,
 } from "@/lib/types/schemas";
 import type { QueryTemplateId } from "@/lib/query/mechanical";
 import { normalizeTaskDateField } from "@/lib/dates/display";
-import { createEmptyWorkspace, ensureTaskTags } from "@/lib/workspace/defaults";
+import {
+  createEmptyWorkspace,
+  normalizeWorkspaceSnapshot,
+} from "@/lib/workspace/defaults";
 import { readMirrorFromIdb, writeMirrorToIdb } from "@/lib/db/dexie";
 import {
   loadWorkspaceFromHandle,
@@ -39,6 +43,12 @@ import {
 } from "@/lib/workspace/merge";
 
 let persistQueue: Promise<void> = Promise.resolve();
+let persistPending = 0;
+
+/** True while a local save is queued or in flight. */
+export function hasPendingPersist(): boolean {
+  return persistPending > 0;
+}
 
 /** Keep ask history when another mutation persisted from a stale snapshot. */
 function reconcileAskHistoryForPersist(
@@ -77,6 +87,11 @@ type WorkspaceState = {
   hydrateInFlight: Promise<void> | null;
   hydrate: () => Promise<void>;
   persist: (next: WorkspaceSnapshot, audit?: Record<string, unknown>) => Promise<void>;
+  /**
+   * Re-fetch the server snapshot when it changed externally (e.g. API/MCP writes).
+   * Returns true if the local snapshot was replaced.
+   */
+  refreshFromServer: () => Promise<boolean>;
   initServerWorkspace: (example?: boolean) => Promise<void>;
   changeSaveFolder: () => Promise<void>;
   linkFolder: () => Promise<void>;
@@ -86,6 +101,9 @@ type WorkspaceState = {
   removeAssignee: (id: string) => Promise<void>;
   upsertTaskTag: (tag: TaskTag) => Promise<void>;
   removeTaskTag: (id: string) => Promise<void>;
+  upsertNoteTag: (tag: NoteTag) => Promise<void>;
+  removeNoteTag: (id: string) => Promise<void>;
+  reorderNoteTags: (orderedIds: string[]) => Promise<void>;
   upsertTask: (task: Task) => Promise<void>;
   createTask: (
     direction: TaskDirection,
@@ -104,8 +122,12 @@ type WorkspaceState = {
     note: NoteMeta,
     body: string,
   ) => Promise<void>;
+  archiveNote: (id: string) => Promise<void>;
+  unarchiveNote: (id: string) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   upsertScheduleEvent: (event: ScheduleEvent) => Promise<void>;
+  archiveScheduleEvent: (id: string) => Promise<void>;
+  unarchiveScheduleEvent: (id: string) => Promise<void>;
   deleteScheduleEvent: (id: string) => Promise<void>;
   addAskHistoryEntry: (
     entry: Omit<
@@ -168,6 +190,15 @@ function stripTagFromTasks(tasks: Task[], tagId: string): Task[] {
   });
 }
 
+function stripTagFromNotes(notes: NoteMeta[], tagId: string): NoteMeta[] {
+  const now = new Date().toISOString();
+  return notes.map((n) => {
+    if (!n.tagIds?.includes(tagId)) return n;
+    const tagIds = n.tagIds.filter((id) => id !== tagId);
+    return { ...n, tagIds, updatedAt: now };
+  });
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
@@ -192,10 +223,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   clearMessage: () => set({ message: null }),
 
   persist: async (next, audit) => {
+    persistPending += 1;
     persistQueue = persistQueue.then(async () => {
+     try {
       const { ioMode, fsHandle } = get();
       const live = get().snapshot;
-      const normalized: WorkspaceSnapshot = ensureTaskTags({
+      const normalized: WorkspaceSnapshot = normalizeWorkspaceSnapshot({
         ...next,
         askHistory: reconcileAskHistoryForPersist(next, live, audit),
       });
@@ -206,18 +239,56 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         await saveWorkspaceToHandle(fsHandle, normalized);
       } else {
         try {
-          await fetchJson("/api/workspace", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ snapshot: normalized, audit }),
-          });
-          set({ ioMode: "server" });
+          const res = await fetchJson<{ ok: boolean; lastModified?: string }>(
+            "/api/workspace",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ snapshot: normalized, audit }),
+            },
+          );
+          const cur = get().snapshot;
+          if (res.lastModified && cur) {
+            // Track the server's stamp so the sync poller doesn't treat our own save as external.
+            set({
+              snapshot: {
+                ...cur,
+                manifest: { ...cur.manifest, lastModified: res.lastModified },
+              },
+              ioMode: "server",
+            });
+          } else {
+            set({ ioMode: "server" });
+          }
         } catch {
           /* IDB mirror already updated when server unreachable */
         }
       }
+     } finally {
+      persistPending -= 1;
+     }
     });
     await persistQueue;
+  },
+
+  refreshFromServer: async () => {
+    const { ioMode, snapshot } = get();
+    if (ioMode !== "server" || !snapshot || persistPending > 0) return false;
+    const data = await fetchJson<{ snapshot: WorkspaceSnapshot; root: string }>(
+      "/api/workspace",
+    );
+    // A local edit may have started while we were fetching; let it win.
+    if (persistPending > 0) return false;
+    const live = get().snapshot;
+    if (live && live.manifest.lastModified === data.snapshot.manifest.lastModified) {
+      return false;
+    }
+    const merged = normalizeWorkspaceSnapshot(
+      mergeWorkspaceSnapshots(data.snapshot, live),
+    );
+    set({ snapshot: merged });
+    await writeMirrorToIdb(merged);
+    return true;
   },
 
   hydrate: async () => {
@@ -232,14 +303,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       set({ loading: true, error: null });
       try {
         const cached = await readMirrorFromIdb();
-        if (cached) set({ snapshot: ensureTaskTags(cached) });
+        if (cached) set({ snapshot: normalizeWorkspaceSnapshot(cached) });
 
         try {
           const data = await fetchJson<{
             snapshot: WorkspaceSnapshot;
             root: string;
           }>("/api/workspace");
-          const merged = ensureTaskTags(
+          const merged = normalizeWorkspaceSnapshot(
             mergeWorkspaceSnapshots(data.snapshot, cached),
           );
           set({
@@ -399,6 +470,45 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       { ...ws, taskTags, inboundTasks, outboundTasks },
       { action: "removeTaskTag", id },
     );
+  },
+
+  upsertNoteTag: async (tag) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const idx = ws.noteTags.findIndex((t) => t.id === tag.id);
+    const noteTags = [...ws.noteTags];
+    if (idx >= 0) noteTags[idx] = tag;
+    else noteTags.push(tag);
+    await get().persist({ ...ws, noteTags }, { action: "noteTag", id: tag.id });
+  },
+
+  removeNoteTag: async (id) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const noteTags = ws.noteTags.filter((t) => t.id !== id);
+    const notesIndex = stripTagFromNotes(ws.notesIndex, id);
+    await get().persist(
+      { ...ws, noteTags, notesIndex },
+      { action: "removeNoteTag", id },
+    );
+  },
+
+  reorderNoteTags: async (orderedIds) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const byId = new Map(ws.noteTags.map((t) => [t.id, t]));
+    const noteTags: NoteTag[] = [];
+    for (const id of orderedIds) {
+      const tag = byId.get(id);
+      if (tag) {
+        noteTags.push(tag);
+        byId.delete(id);
+      }
+    }
+    for (const tag of ws.noteTags) {
+      if (byId.has(tag.id)) noteTags.push(tag);
+    }
+    await get().persist({ ...ws, noteTags }, { action: "reorderNoteTags" });
   },
 
   upsertTask: async (task) => {
@@ -562,6 +672,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     );
   },
 
+  archiveNote: async (id) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const now = new Date().toISOString();
+    const notesIndex = ws.notesIndex.map((n) =>
+      n.id === id ? { ...n, archived: true, updatedAt: now } : n,
+    );
+    await get().persist({ ...ws, notesIndex }, { action: "archiveNote", id });
+  },
+
+  unarchiveNote: async (id) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const now = new Date().toISOString();
+    const notesIndex = ws.notesIndex.map((n) =>
+      n.id === id ? { ...n, archived: false, updatedAt: now } : n,
+    );
+    await get().persist({ ...ws, notesIndex }, { action: "unarchiveNote", id });
+  },
+
   deleteNote: async (id) => {
     const ws = get().snapshot;
     if (!ws) return;
@@ -579,6 +709,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (idx >= 0) scheduleEvents[idx] = event;
     else scheduleEvents.push(event);
     await get().persist({ ...ws, scheduleEvents }, { action: "event", id: event.id });
+  },
+
+  archiveScheduleEvent: async (id) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const scheduleEvents = ws.scheduleEvents.map((e) =>
+      e.id === id ? { ...e, archived: true } : e,
+    );
+    await get().persist({ ...ws, scheduleEvents }, { action: "archiveEvent", id });
+  },
+
+  unarchiveScheduleEvent: async (id) => {
+    const ws = get().snapshot;
+    if (!ws) return;
+    const scheduleEvents = ws.scheduleEvents.map((e) =>
+      e.id === id ? { ...e, archived: false } : e,
+    );
+    await get().persist({ ...ws, scheduleEvents }, { action: "unarchiveEvent", id });
   },
 
   deleteScheduleEvent: async (id) => {

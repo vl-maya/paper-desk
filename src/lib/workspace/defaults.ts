@@ -151,6 +151,17 @@ export function ensureTaskTags(ws: WorkspaceSnapshot): WorkspaceSnapshot {
   };
 }
 
+export function ensureNoteTags(ws: WorkspaceSnapshot): WorkspaceSnapshot {
+  if (ws.noteTags) return ws;
+  return { ...ws, noteTags: [] };
+}
+
+export function normalizeWorkspaceSnapshot(
+  ws: WorkspaceSnapshot,
+): WorkspaceSnapshot {
+  return ensureNoteTags(ensureTaskTags(ws));
+}
+
 export function createEmptyWorkspace(): WorkspaceSnapshot {
   const now = new Date().toISOString();
   return {
@@ -158,6 +169,7 @@ export function createEmptyWorkspace(): WorkspaceSnapshot {
     settings: normalizeSettings({ ...DEFAULT_SETTINGS }),
     assignees: [],
     taskTags: DEFAULT_TASK_TAGS.map((t) => ({ ...t })),
+    noteTags: [],
     inboundTasks: [],
     outboundTasks: [],
     links: [],

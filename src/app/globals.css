@@ -114,6 +114,7 @@ body {
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .ask-markdown a:hover,

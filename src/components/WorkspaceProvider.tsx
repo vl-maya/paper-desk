@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useWorkspaceStore } from "@/lib/store/workspace-store";
+import { useServerSync } from "@/hooks/useServerSync";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const hydrate = useWorkspaceStore((s) => s.hydrate);
@@ -11,6 +12,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useServerSync();
 
   if (loading) {
     return (

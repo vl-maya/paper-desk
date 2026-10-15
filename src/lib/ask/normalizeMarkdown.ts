@@ -36,6 +36,34 @@ function normalizeTableRow(line: string, separator: boolean): string {
 }
 
 /**
+ * `(label)[url]` is easy to type instead of `[label](url)`.
+ * Only http(s) and app-relative destinations are rewritten.
+ */
+const REVERSED_MARKDOWN_LINK =
+  /\(([^)\r\n]+)\)\[((?:https?:\/\/|\/)[^\]\s]+)\]/g;
+
+function rewriteReversedLinks(text: string): string {
+  return text.replace(
+    REVERSED_MARKDOWN_LINK,
+    (match, label: string, url: string) => {
+      const textLabel = label.trim();
+      if (!textLabel) return match;
+      return `[${textLabel}](${url})`;
+    },
+  );
+}
+
+/** Turn reversed link syntax into standard markdown, leaving code spans alone. */
+export function normalizeMarkdownLinks(content: string): string {
+  const parts = content.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+  return parts
+    .map((part, index) =>
+      index % 2 === 1 ? part : rewriteReversedLinks(part),
+    )
+    .join("");
+}
+
+/**
  * Fixes common CLI markdown table mistakes so remark-gfm can parse them.
  */
 export function normalizeAskMarkdown(content: string): string {
@@ -82,5 +110,5 @@ export function normalizeAskMarkdown(content: string): string {
     }
   }
 
-  return out.join("\n").trimEnd();
+  return normalizeMarkdownLinks(out.join("\n").trimEnd());
 }

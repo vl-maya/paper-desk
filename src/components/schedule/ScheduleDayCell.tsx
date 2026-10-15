@@ -2,6 +2,7 @@ import { format, isToday } from "date-fns";
 import { formatDisplayDate } from "@/lib/dates/display";
 import type { TaskTag } from "@/lib/types/schemas";
 import { TaskTagPill } from "@/components/TaskTagPill";
+import { SCHEDULE_EVENT_TAG } from "@/lib/schedule/event-display";
 
 export type ScheduleDayItem =
   | { kind: "task"; title: string; sub: string; tagId?: string }
@@ -134,12 +135,7 @@ export function ScheduleDayCell({
         {events.length > 0 && (
           <div>
             <div className={`mb-1 ${compact ? "scale-90 origin-left" : ""}`}>
-              <span
-                className="inline-flex rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide bg-sky-200 text-sky-950"
-                style={{ backgroundColor: "#bae6fd", color: "#0c4a6e" }}
-              >
-                Events
-              </span>
+              <TaskTagPill tag={SCHEDULE_EVENT_TAG} />
             </div>
             <ul className="space-y-1">
               {events.map((item, i) => (
@@ -148,7 +144,7 @@ export function ScheduleDayCell({
                   <br />
                   <button
                     type="button"
-                    className="text-left hover:underline font-medium wrap-break-word"
+                    className="text-left hover:underline font-medium wrap-break-word text-ink"
                     onClick={() => onEventClick(item.eventId)}
                   >
                     {item.title}

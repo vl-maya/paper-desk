@@ -125,7 +125,7 @@ export function TaskForm({
       <label className="block text-sm">
         Description
         <span className="block text-xs text-ink-muted font-normal mt-0.5">
-          Markdown supported (lists, headings, **bold**).
+          Markdown supported (lists, headings, links, **bold**).
         </span>
         <textarea
           className="mt-1 w-full border border-paper-line rounded px-2 py-1.5 bg-card min-h-[80px] font-mono text-[13px] leading-relaxed"

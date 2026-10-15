@@ -1,10 +1,7 @@
 "use client";
 
 import { isSameMonth } from "date-fns";
-import {
-  formatDisplayDate,
-  formatDisplayDateTime,
-} from "@/lib/dates/display";
+import { formatDisplayDate } from "@/lib/dates/display";
 import { useCallback, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useWorkspaceStore } from "@/lib/store/workspace-store";
@@ -26,7 +23,11 @@ import {
   ScheduleDayCell,
   type ScheduleDayItem,
 } from "@/components/schedule/ScheduleDayCell";
-import { ScheduleEventNotes } from "@/components/schedule/ScheduleEventNotes";
+import { StandaloneEventsSection } from "@/components/schedule/StandaloneEventsSection";
+import {
+  eventIsArchived,
+  filterEventsByList,
+} from "@/lib/schedule/filter-events";
 
 function defaultNewEvent(): ScheduleEvent {
   const now = new Date();
@@ -36,6 +37,7 @@ function defaultNewEvent(): ScheduleEvent {
     id: uuidv4(),
     title: "",
     start,
+    archived: false,
   };
 }
 
@@ -55,7 +57,12 @@ export function ScheduleCalendar({
 }: ScheduleCalendarProps) {
   const snapshot = useWorkspaceStore((s) => s.snapshot);
   const upsertScheduleEvent = useWorkspaceStore((s) => s.upsertScheduleEvent);
+  const archiveScheduleEvent = useWorkspaceStore((s) => s.archiveScheduleEvent);
+  const unarchiveScheduleEvent = useWorkspaceStore(
+    (s) => s.unarchiveScheduleEvent,
+  );
   const deleteScheduleEvent = useWorkspaceStore((s) => s.deleteScheduleEvent);
+  const [archivedEventsOpen, setArchivedEventsOpen] = useState(false);
   const [internalViewMode, setInternalViewMode] = useState<ScheduleViewMode>(
     fixedMode ?? "weekly",
   );
@@ -116,6 +123,7 @@ export function ScheduleCalendar({
         });
     }
     for (const e of snapshot.scheduleEvents) {
+      if (eventIsArchived(e)) continue;
       push(e.start, {
         kind: "event",
         title: e.title,
@@ -128,9 +136,27 @@ export function ScheduleCalendar({
 
   const eventById = useMemo(() => {
     const m = new Map<string, ScheduleEvent>();
-    for (const e of snapshot?.scheduleEvents ?? []) m.set(e.id, e);
+    for (const e of snapshot?.scheduleEvents ?? []) {
+      if (!eventIsArchived(e)) m.set(e.id, e);
+    }
     return m;
   }, [snapshot?.scheduleEvents]);
+
+  const activeEvents = useMemo(
+    () =>
+      snapshot
+        ? filterEventsByList(snapshot.scheduleEvents, "active")
+        : [],
+    [snapshot],
+  );
+
+  const archivedEvents = useMemo(
+    () =>
+      snapshot
+        ? filterEventsByList(snapshot.scheduleEvents, "archived")
+        : [],
+    [snapshot],
+  );
 
   const handleEventClick = useCallback(
     (eventId: string) => {
@@ -191,6 +217,22 @@ export function ScheduleCalendar({
               closeModal();
             }}
             onCancel={closeModal}
+            onArchive={
+              !isNewEvent && !eventIsArchived(editing)
+                ? () => {
+                    void archiveScheduleEvent(editing.id);
+                    closeModal();
+                  }
+                : undefined
+            }
+            onUnarchive={
+              !isNewEvent && eventIsArchived(editing)
+                ? () => {
+                    void unarchiveScheduleEvent(editing.id);
+                    closeModal();
+                  }
+                : undefined
+            }
             onDelete={
               !isNewEvent
                 ? () => {
@@ -304,52 +346,16 @@ export function ScheduleCalendar({
         )}
 
         {showStandaloneEvents && (
-          <section className="mt-8">
-            <h3 className="font-serif text-lg mb-2">Standalone events</h3>
-            {snapshot.scheduleEvents.length === 0 ? (
-              <p className="text-sm text-ink-muted">
-                No events yet. Click <strong>New event</strong> to add one.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {snapshot.scheduleEvents.map((e) => (
-                  <li
-                    key={e.id}
-                    className="paper-card px-3 py-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium">{e.title}</p>
-                      <p className="text-xs text-ink-muted">
-                        {formatDisplayDateTime(e.start)}
-                        {e.end ? ` → ${formatDisplayDateTime(e.end)}` : ""}
-                      </p>
-                      {e.notes && (
-                        <div className="mt-1 text-xs">
-                          <ScheduleEventNotes content={e.notes} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        type="button"
-                        className="text-xs font-medium rounded px-2.5 py-1 bg-accent text-white hover:brightness-105"
-                        onClick={() => setEditing(e)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-red-800 underline"
-                        onClick={() => setEventToDelete(e)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <StandaloneEventsSection
+            activeEvents={activeEvents}
+            archivedEvents={archivedEvents}
+            archivedOpen={archivedEventsOpen}
+            onArchivedOpenChange={setArchivedEventsOpen}
+            onEdit={(e) => setEditing(e)}
+            onArchive={(e) => void archiveScheduleEvent(e.id)}
+            onUnarchive={(e) => void unarchiveScheduleEvent(e.id)}
+            onDelete={(e) => setEventToDelete(e)}
+          />
         )}
       </div>
     </>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { useWorkspaceStore } from "@/lib/store/workspace-store";
-import type { SortPreset, TaskTag } from "@/lib/types/schemas";
+import type { NoteTag, SortPreset, TaskTag } from "@/lib/types/schemas";
 import { AiModelCatalogEditor } from "@/components/AiModelCatalogEditor";
 import { AiModelPicker } from "@/components/AiModelPicker";
 import { modelCatalogForSettings, type AiProvider } from "@/lib/ai/providers";
@@ -27,6 +27,8 @@ export default function SettingsPage() {
   const removeAssignee = useWorkspaceStore((s) => s.removeAssignee);
   const upsertTaskTag = useWorkspaceStore((s) => s.upsertTaskTag);
   const removeTaskTag = useWorkspaceStore((s) => s.removeTaskTag);
+  const upsertNoteTag = useWorkspaceStore((s) => s.upsertNoteTag);
+  const removeNoteTag = useWorkspaceStore((s) => s.removeNoteTag);
   const initServerWorkspace = useWorkspaceStore((s) => s.initServerWorkspace);
   const changeSaveFolder = useWorkspaceStore((s) => s.changeSaveFolder);
   const ioMode = useWorkspaceStore((s) => s.ioMode);
@@ -36,8 +38,12 @@ export default function SettingsPage() {
   const [tagName, setTagName] = useState("");
   const [tagColor, setTagColor] = useState("#78716c");
   const [editingTag, setEditingTag] = useState<TaskTag | null>(null);
+  const [noteTagName, setNoteTagName] = useState("");
+  const [noteTagColor, setNoteTagColor] = useState("#78716c");
+  const [editingNoteTag, setEditingNoteTag] = useState<NoteTag | null>(null);
   const [pendingRemove, setPendingRemove] = useState<
-    | { kind: "tag"; id: string; label: string }
+    | { kind: "taskTag"; id: string; label: string }
+    | { kind: "noteTag"; id: string; label: string }
     | { kind: "assignee"; id: string; label: string }
     | null
   >(null);
@@ -53,24 +59,37 @@ export default function SettingsPage() {
         onClose={() => setPendingRemove(null)}
         onConfirm={() => {
           if (!pendingRemove) return;
-          if (pendingRemove.kind === "tag") {
+          if (pendingRemove.kind === "taskTag") {
             void removeTaskTag(pendingRemove.id);
             if (editingTag?.id === pendingRemove.id) {
               setEditingTag(null);
               setTagName("");
               setTagColor("#78716c");
             }
+          } else if (pendingRemove.kind === "noteTag") {
+            void removeNoteTag(pendingRemove.id);
+            if (editingNoteTag?.id === pendingRemove.id) {
+              setEditingNoteTag(null);
+              setNoteTagName("");
+              setNoteTagColor("#78716c");
+            }
           } else {
             void removeAssignee(pendingRemove.id);
           }
         }}
         title={
-          pendingRemove?.kind === "tag" ? "Remove tag?" : "Remove assignee?"
+          pendingRemove?.kind === "assignee"
+            ? "Remove assignee?"
+            : pendingRemove?.kind === "noteTag"
+              ? "Remove note tag?"
+              : "Remove task tag?"
         }
         description={
-          pendingRemove?.kind === "tag"
-            ? "Tasks using this tag will keep working but lose this label."
-            : "Tasks assigned to this person will become unassigned."
+          pendingRemove?.kind === "assignee"
+            ? "Tasks assigned to this person will become unassigned."
+            : pendingRemove?.kind === "noteTag"
+              ? "Notes using this tag will lose the label."
+              : "Tasks using this tag will keep working but lose this label."
         }
         itemLabel={pendingRemove?.label}
         confirmLabel="Remove"
@@ -233,7 +252,7 @@ export default function SettingsPage() {
                   className="text-xs text-red-800 underline"
                   onClick={() =>
                     setPendingRemove({
-                      kind: "tag",
+                      kind: "taskTag",
                       id: tag.id,
                       label: tag.name,
                     })
@@ -299,6 +318,119 @@ export default function SettingsPage() {
                     setEditingTag(null);
                     setTagName("");
                     setTagColor("#78716c");
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="note-tags" className="paper-card p-4 space-y-3 scroll-mt-4">
+        <h3 className="font-serif text-lg">Note tags</h3>
+        <p className="text-sm text-ink-muted">
+          Group notes on the Notes page. Each note can have multiple tags. Drag
+          tag sections on Notes to reorder how groups appear.
+        </p>
+        <ul className="space-y-2 text-sm">
+          {snapshot.noteTags.map((tag) => (
+            <li
+              key={tag.id}
+              className="flex flex-wrap items-center justify-between gap-2"
+            >
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className="h-5 w-5 rounded border border-paper-line shrink-0"
+                  style={{ backgroundColor: tag.color }}
+                  aria-hidden
+                />
+                <span>{tag.name}</span>
+              </span>
+              <span className="flex gap-2">
+                <button
+                  type="button"
+                  className="text-xs text-accent underline"
+                  onClick={() => {
+                    setEditingNoteTag(tag);
+                    setNoteTagName(tag.name);
+                    setNoteTagColor(tag.color);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-red-800 underline"
+                  onClick={() =>
+                    setPendingRemove({
+                      kind: "noteTag",
+                      id: tag.id,
+                      label: tag.name,
+                    })
+                  }
+                >
+                  Remove
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <label className="min-w-0">
+            <span className={settingsFieldLabel}>
+              {editingNoteTag ? "Edit tag name" : "New tag name"}
+            </span>
+            <input
+              className={`${settingsControl} w-full px-2`}
+              placeholder="e.g. research"
+              value={noteTagName}
+              onChange={(e) => setNoteTagName(e.target.value)}
+            />
+          </label>
+          <label>
+            <span className={settingsFieldLabel}>Color</span>
+            <input
+              type="color"
+              className={`${settingsControl} block w-9 cursor-pointer p-1`}
+              value={noteTagColor}
+              onChange={(e) => setNoteTagColor(e.target.value)}
+            />
+          </label>
+          <div>
+            <span
+              className={`${settingsFieldLabel} hidden sm:block invisible`}
+              aria-hidden
+            >
+              Action
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={settingsPrimaryButton}
+                onClick={() => {
+                  if (!noteTagName.trim()) return;
+                  void upsertNoteTag({
+                    id: editingNoteTag?.id ?? uuidv4(),
+                    name: noteTagName.trim(),
+                    color: noteTagColor,
+                  });
+                  setNoteTagName("");
+                  setNoteTagColor("#78716c");
+                  setEditingNoteTag(null);
+                }}
+              >
+                {editingNoteTag ? "Save tag" : "Add tag"}
+              </button>
+              {editingNoteTag && (
+                <button
+                  type="button"
+                  className={`${settingsControl} inline-flex items-center justify-center px-4`}
+                  onClick={() => {
+                    setEditingNoteTag(null);
+                    setNoteTagName("");
+                    setNoteTagColor("#78716c");
                   }}
                 >
                   Cancel

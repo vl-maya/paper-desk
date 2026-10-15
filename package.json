@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "node scripts/run-next.mjs start",
     "lint": "eslint",
-    "seed:example": "node scripts/seed-example.mjs"
+    "seed:example": "node scripts/seed-example.mjs",
+    "mcp": "node mcp/paper-desk-mcp.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.2",
@@ -15,6 +17,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.4",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@replit/codemirror-vim": "^6.4.0",
     "@uiw/react-codemirror": "^4.25.12",
     "date-fns": "^4.4.0",

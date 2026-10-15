@@ -18,12 +18,16 @@ export function ScheduleEventForm({
   event,
   isNew,
   onSave,
+  onArchive,
+  onUnarchive,
   onDelete,
   onCancel,
 }: {
   event: ScheduleEvent;
   isNew?: boolean;
   onSave: (event: ScheduleEvent) => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete?: () => void;
   onCancel?: () => void;
 }) {
@@ -140,6 +144,24 @@ export function ScheduleEventForm({
             onClick={onCancel}
           >
             Cancel
+          </button>
+        )}
+        {onArchive && (
+          <button
+            type="button"
+            className="rounded border border-paper-line bg-card px-4 py-2 text-sm text-ink-muted transition-colors hover:bg-paper-line/40 hover:text-ink"
+            onClick={onArchive}
+          >
+            Archive
+          </button>
+        )}
+        {onUnarchive && (
+          <button
+            type="button"
+            className="rounded border border-paper-line bg-card px-4 py-2 text-sm text-ink transition-colors hover:bg-paper-line/40"
+            onClick={onUnarchive}
+          >
+            Unarchive
           </button>
         )}
         {onDelete && (

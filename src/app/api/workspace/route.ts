@@ -6,6 +6,7 @@ import {
   saveWorkspaceToDisk,
   workspaceExists,
   initWorkspaceOnDisk,
+  withWriteLock,
 } from "@/lib/io/server-fs";
 import { WorkspaceSnapshotSchema } from "@/lib/types/schemas";
 
@@ -24,12 +25,15 @@ export async function PUT(request: Request) {
   const body = await request.json();
   const snapshot = WorkspaceSnapshotSchema.parse(body.snapshot);
   const root = getWorkspaceRoot();
-  await saveWorkspaceToDisk(snapshot, root);
-  if (body.audit) {
-    await appendAuditLine(
-      { ...body.audit, at: new Date().toISOString() },
-      root,
-    );
-  }
-  return NextResponse.json({ ok: true });
+  const lastModified = await withWriteLock(async () => {
+    const lm = await saveWorkspaceToDisk(snapshot, root);
+    if (body.audit) {
+      await appendAuditLine(
+        { ...body.audit, at: new Date().toISOString() },
+        root,
+      );
+    }
+    return lm;
+  });
+  return NextResponse.json({ ok: true, lastModified });
 }

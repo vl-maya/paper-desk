@@ -13,11 +13,14 @@ function luminance(hex: string): number {
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-export function taskTagPillStyle(color: string): CSSProperties {
+export function tagPillStyle(color: string): CSSProperties {
   const bg = color.startsWith("#") ? color : `#${color}`;
   const text = luminance(bg) > 0.55 ? "#1c1917" : "#fafaf9";
   return { backgroundColor: bg, color: text };
 }
+
+/** @deprecated Use tagPillStyle */
+export const taskTagPillStyle = tagPillStyle;
 
 export function getTaskTagId(tags: string[] | undefined): string | undefined {
   return tags?.[0];

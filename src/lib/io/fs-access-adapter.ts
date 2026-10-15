@@ -63,6 +63,7 @@ async function readJson<T>(
 import {
   AssigneeSchema,
   TaskTagSchema,
+  NoteTagSchema,
   ManifestSchema,
   SettingsSchema,
   TaskLinkSchema,
@@ -82,6 +83,7 @@ import { z } from "zod";
 const TasksFileSchema = z.object({ tasks: z.array(TaskSchema) });
 const AssigneesFileSchema = z.object({ assignees: z.array(AssigneeSchema) });
 const TaskTagsFileSchema = z.object({ tags: z.array(TaskTagSchema) });
+const NoteTagsFileSchema = z.object({ tags: z.array(NoteTagSchema) });
 const LinksFileSchema = z.object({ links: z.array(TaskLinkSchema) });
 const NotesIndexSchema = z.object({ notes: z.array(NoteMetaSchema) });
 const EventsFileSchema = z.object({ events: z.array(ScheduleEventSchema) });
@@ -115,6 +117,12 @@ export async function loadWorkspaceFromHandle(
     WORKSPACE_PATHS.taskTags,
     { tags: DEFAULT_TASK_TAGS.map((t) => ({ ...t })) },
     (raw) => TaskTagsFileSchema.parse(raw),
+  );
+  const noteTags = await readJson(
+    root,
+    WORKSPACE_PATHS.noteTags,
+    { tags: [] },
+    (raw) => NoteTagsFileSchema.parse(raw),
   );
   const inbound = await readJson(
     root,
@@ -175,6 +183,7 @@ export async function loadWorkspaceFromHandle(
     settings,
     assignees: assignees.assignees,
     taskTags: taskTags.tags,
+    noteTags: noteTags.tags,
     inboundTasks: inbound.tasks,
     outboundTasks: outbound.tasks,
     links: links.links,
@@ -203,6 +212,10 @@ export async function saveWorkspaceToHandle(
     [
       WORKSPACE_PATHS.taskTags,
       JSON.stringify({ tags: parsed.taskTags }, null, 2),
+    ],
+    [
+      WORKSPACE_PATHS.noteTags,
+      JSON.stringify({ tags: parsed.noteTags }, null, 2),
     ],
     [
       WORKSPACE_PATHS.inboundTasks,

@@ -6,6 +6,7 @@ export const WORKSPACE_PATHS = {
   settings: "settings.json",
   assignees: "assignees.json",
   taskTags: "task-tags.json",
+  noteTags: "note-tags.json",
   inboundTasks: "inbound/tasks.json",
   outboundTasks: "outbound/tasks.json",
   links: "links.json",

@@ -59,6 +59,13 @@ export const TaskTagSchema = z.object({
 });
 export type TaskTag = z.infer<typeof TaskTagSchema>;
 
+export const NoteTagSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  color: z.string().min(1),
+});
+export type NoteTag = z.infer<typeof NoteTagSchema>;
+
 export const AiSelectableModelSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
@@ -99,8 +106,10 @@ export const NoteMetaSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
   taskId: z.string().uuid().optional(),
+  tagIds: z.array(z.string().uuid()).optional().default([]),
   updatedAt: z.string(),
   createdAt: z.string(),
+  archived: z.boolean().default(false),
 });
 export type NoteMeta = z.infer<typeof NoteMetaSchema>;
 
@@ -111,6 +120,7 @@ export const ScheduleEventSchema = z.object({
   end: z.string().optional(),
   notes: z.string().optional(),
   taskId: z.string().uuid().optional(),
+  archived: z.boolean().default(false),
 });
 export type ScheduleEvent = z.infer<typeof ScheduleEventSchema>;
 
@@ -149,6 +159,7 @@ export const WorkspaceSnapshotSchema = z.object({
   settings: SettingsSchema,
   assignees: z.array(AssigneeSchema),
   taskTags: z.array(TaskTagSchema).default([]),
+  noteTags: z.array(NoteTagSchema).default([]),
   inboundTasks: z.array(TaskSchema),
   outboundTasks: z.array(TaskSchema),
   links: z.array(TaskLinkSchema),

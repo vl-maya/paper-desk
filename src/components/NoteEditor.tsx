@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import type { NoteMeta } from "@/lib/types/schemas";
+import type { NoteMeta, NoteTag } from "@/lib/types/schemas";
+import { NoteTagMultiSelect } from "@/components/NoteTagMultiSelect";
 import { AskAnswerMarkdown } from "@/components/AskAnswerMarkdown";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { safeFormatDisplayDate } from "@/lib/dates/display";
@@ -88,13 +89,23 @@ function SaveCheckIcon() {
 export function NoteEditor({
   note,
   body,
+  noteTags,
+  tagIds,
+  onTagIdsChange,
   onSave,
+  onArchive,
+  onUnarchive,
   onDelete,
   initialPreview = true,
 }: {
   note: NoteMeta;
   body: string;
+  noteTags: NoteTag[];
+  tagIds: string[];
+  onTagIdsChange: (tagIds: string[]) => void | Promise<void>;
   onSave: (title: string, content: string) => void | Promise<void>;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onDelete?: () => void;
   /** When false, opens in Write mode (used for newly created notes). */
   initialPreview?: boolean;
@@ -163,6 +174,11 @@ export function NoteEditor({
           </p>
         )}
       </div>
+      <NoteTagMultiSelect
+        tags={noteTags}
+        value={tagIds}
+        onChange={(next) => void onTagIdsChange(next)}
+      />
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
         <div className="flex gap-2">
           <button
@@ -181,7 +197,7 @@ export function NoteEditor({
           </button>
         </div>
         <span className="text-ink-muted">
-          Markdown supported (headings, lists, tables, **bold**).
+          Markdown supported (headings, lists, links, tables, **bold**).
         </span>
       </div>
       {preview ? (
@@ -291,6 +307,24 @@ export function NoteEditor({
             Saved
           </span>
         </button>
+        {onArchive && (
+          <button
+            type="button"
+            className="h-8 shrink-0 rounded border border-paper-line bg-card px-3 text-sm text-ink-muted transition-colors hover:bg-paper-line/40 hover:text-ink"
+            onClick={onArchive}
+          >
+            Archive
+          </button>
+        )}
+        {onUnarchive && (
+          <button
+            type="button"
+            className="h-8 shrink-0 rounded border border-paper-line bg-card px-3 text-sm text-ink transition-colors hover:bg-paper-line/40"
+            onClick={onUnarchive}
+          >
+            Unarchive
+          </button>
+        )}
         {onDelete && (
           <button
             type="button"

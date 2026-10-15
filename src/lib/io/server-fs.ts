@@ -3,6 +3,7 @@ import path from "path";
 import {
   AssigneeSchema,
   TaskTagSchema,
+  NoteTagSchema,
   ManifestSchema,
   SettingsSchema,
   TaskLinkSchema,
@@ -25,6 +26,7 @@ import { z } from "zod";
 const TasksFileSchema = z.object({ tasks: z.array(TaskSchema) });
 const AssigneesFileSchema = z.object({ assignees: z.array(AssigneeSchema) });
 const TaskTagsFileSchema = z.object({ tags: z.array(TaskTagSchema) });
+const NoteTagsFileSchema = z.object({ tags: z.array(NoteTagSchema) });
 const LinksFileSchema = z.object({ links: z.array(TaskLinkSchema) });
 const NotesIndexSchema = z.object({ notes: z.array(NoteMetaSchema) });
 const EventsFileSchema = z.object({ events: z.array(ScheduleEventSchema) });
@@ -39,13 +41,27 @@ export function getWorkspaceRoot(): string {
   );
 }
 
+type LockGlobal = { __paperDeskWriteLock?: Promise<unknown> };
+
+/**
+ * Serialize workspace writes within this server process. Stored on globalThis so
+ * every route bundle shares the same queue.
+ */
+export function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+  const g = globalThis as LockGlobal;
+  const prev = g.__paperDeskWriteLock ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  g.__paperDeskWriteLock = run.catch(() => undefined);
+  return run;
+}
+
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
 
 async function atomicWrite(filePath: string, content: string) {
   await ensureDir(path.dirname(filePath));
-  const tmp = `${filePath}.tmp`;
+  const tmp = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
   await fs.writeFile(tmp, content, "utf8");
   await fs.rename(tmp, filePath);
 }
@@ -156,6 +172,11 @@ export async function loadWorkspaceFromDisk(
     () => ({ tags: DEFAULT_TASK_TAGS.map((t) => ({ ...t })) }),
     (raw) => TaskTagsFileSchema.parse(raw),
   );
+  const noteTags = await readJsonFile(
+    path.join(root, WORKSPACE_PATHS.noteTags),
+    () => ({ tags: [] }),
+    (raw) => NoteTagsFileSchema.parse(raw),
+  );
   const inbound = await readJsonFile(
     path.join(root, WORKSPACE_PATHS.inboundTasks),
     () => ({ tasks: [] }),
@@ -194,6 +215,7 @@ export async function loadWorkspaceFromDisk(
     settings,
     assignees: assignees.assignees,
     taskTags: taskTags.tags,
+    noteTags: noteTags.tags,
     inboundTasks: inbound.tasks,
     outboundTasks: outbound.tasks,
     links: links.links,
@@ -208,7 +230,7 @@ export async function loadWorkspaceFromDisk(
 export async function saveWorkspaceToDisk(
   snapshot: WorkspaceSnapshot,
   root = getWorkspaceRoot(),
-): Promise<void> {
+): Promise<string> {
   const parsed = WorkspaceSnapshotSchema.parse(snapshot);
   const now = new Date().toISOString();
   parsed.manifest = { ...parsed.manifest, lastModified: now };
@@ -229,6 +251,10 @@ export async function saveWorkspaceToDisk(
   await atomicWrite(
     path.join(root, WORKSPACE_PATHS.taskTags),
     JSON.stringify({ tags: parsed.taskTags }, null, 2),
+  );
+  await atomicWrite(
+    path.join(root, WORKSPACE_PATHS.noteTags),
+    JSON.stringify({ tags: parsed.noteTags }, null, 2),
   );
   await atomicWrite(
     path.join(root, WORKSPACE_PATHS.inboundTasks),
@@ -256,6 +282,7 @@ export async function saveWorkspaceToDisk(
   );
 
   await writeNoteBodiesToDisk(root, parsed);
+  return now;
 }
 
 export async function appendAuditLine(
