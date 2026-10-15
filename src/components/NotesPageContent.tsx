@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useWorkspaceStore } from "@/lib/store/workspace-store";
 import { NoteEditor } from "@/components/NoteEditor";
 import { NotesSidebar } from "@/components/NotesSidebar";
+import { NotesSidebarToggle } from "@/components/NotesSidebarToggle";
 import type { NoteMeta } from "@/lib/types/schemas";
 import {
   defaultNoteTitle,
@@ -15,6 +16,10 @@ import {
   filterNotesByList,
   noteIsArchived,
 } from "@/lib/notes/filter-notes";
+import {
+  readNotesSidebarCollapsedFromStorage,
+  writeNotesSidebarCollapsedToStorage,
+} from "@/lib/notes/sidebar-preference";
 
 function notesByLatest(notes: NoteMeta[]): NoteMeta[] {
   return [...notes].sort(
@@ -36,8 +41,18 @@ export function NotesPageContent() {
   const deleteNote = useWorkspaceStore((s) => s.deleteNote);
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   /** Note id that should open in Write mode once (set on create). */
   const [writeOnOpenId, setWriteOnOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSidebarCollapsed(readNotesSidebarCollapsedFromStorage());
+  }, []);
+
+  const setSidebarCollapsedPersisted = useCallback((collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+    writeNotesSidebarCollapsedToStorage(collapsed);
+  }, []);
 
   const activeNotes = useMemo(() => {
     if (!snapshot) return [];
@@ -169,26 +184,48 @@ export function NotesPageContent() {
 
   return (
     <div>
-      <h2 className="font-serif text-2xl mb-4">Notes</h2>
-      <div className="flex flex-col lg:flex-row gap-6">
-        <NotesSidebar
-          activeNotes={activeNotes}
-          archivedNotes={archivedNotes}
-          noteTags={snapshot.noteTags}
-          selectedTitle={effectiveSelectedTitle}
-          noteBodies={snapshot.noteBodies}
-          archivedOpen={archivedOpen}
-          onArchivedOpenChange={setArchivedOpen}
-          onReorderNoteTags={(orderedIds) => {
-            void reorderNoteTags(orderedIds);
-          }}
-          onSelectNote={(title, id) => {
-            selectNote(title);
-            if (id !== writeOnOpenId) setWriteOnOpenId(null);
-          }}
-          onCreateNote={handleCreateNote}
+      <h2 className="mb-4">
+        <NotesSidebarToggle
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsedPersisted(!sidebarCollapsed)}
         />
-        <div className="flex-1">
+      </h2>
+      <div
+        className={`flex flex-col items-start transition-[gap] duration-300 ease-in-out motion-reduce:transition-none lg:flex-row ${
+          sidebarCollapsed ? "gap-0" : "gap-4 lg:gap-5"
+        }`}
+      >
+        <div
+          className={`grid w-full shrink-0 overflow-hidden transition-[grid-template-rows,width,opacity,transform] duration-300 ease-in-out motion-reduce:transform-none motion-reduce:transition-none lg:grid-rows-[1fr] ${
+            sidebarCollapsed
+              ? "grid-rows-[0fr] -translate-x-2 opacity-0 lg:w-0"
+              : "grid-rows-[1fr] translate-x-0 opacity-100 lg:w-64"
+          }`}
+          aria-hidden={sidebarCollapsed}
+          inert={sidebarCollapsed ? true : undefined}
+        >
+          <div className="min-h-0 overflow-hidden lg:w-64">
+            <NotesSidebar
+              id="notes-sidebar"
+              activeNotes={activeNotes}
+              archivedNotes={archivedNotes}
+              noteTags={snapshot.noteTags}
+              selectedTitle={effectiveSelectedTitle}
+              noteBodies={snapshot.noteBodies}
+              archivedOpen={archivedOpen}
+              onArchivedOpenChange={setArchivedOpen}
+              onReorderNoteTags={(orderedIds) => {
+                void reorderNoteTags(orderedIds);
+              }}
+              onSelectNote={(title, id) => {
+                selectNote(title);
+                if (id !== writeOnOpenId) setWriteOnOpenId(null);
+              }}
+              onCreateNote={handleCreateNote}
+            />
+          </div>
+        </div>
+        <div className="flex-1 min-w-0 w-full">
           {selected ? (
             <NoteEditor
               note={selected}

@@ -19,6 +19,7 @@ export type NotesSidebarProps = {
   noteBodies?: Record<string, string>;
   archivedOpen?: boolean;
   onArchivedOpenChange?: (open: boolean) => void;
+  id?: string;
 };
 
 function NotesSearchInput({
@@ -204,6 +205,7 @@ export function NotesSidebar({
   noteBodies,
   archivedOpen = false,
   onArchivedOpenChange,
+  id,
 }: NotesSidebarProps) {
   const [activeSearch, setActiveSearch] = useState("");
   const [archivedSearch, setArchivedSearch] = useState("");
@@ -258,7 +260,10 @@ export function NotesSidebar({
   const taggedIds = noteTags.map((t) => t.id);
 
   return (
-    <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-3">
+    <aside
+      id={id}
+      className="w-full lg:w-64 shrink-0 flex flex-col gap-3"
+    >
       <button
         type="button"
         className="w-full rounded bg-accent text-white text-sm py-2 font-medium transition-colors hover:bg-accent/90"
