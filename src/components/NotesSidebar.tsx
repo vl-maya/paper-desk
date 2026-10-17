@@ -262,15 +262,17 @@ export function NotesSidebar({
   return (
     <aside
       id={id}
-      className="w-full lg:w-64 shrink-0 flex flex-col gap-3"
+      className="flex w-full shrink-0 flex-col gap-3 lg:w-64"
     >
-      <button
-        type="button"
-        className="w-full rounded bg-accent text-white text-sm py-2 font-medium transition-colors hover:bg-accent/90"
-        onClick={onCreateNote}
-      >
-        New note
-      </button>
+      <div className="sticky top-0 z-10 shrink-0 bg-paper pb-1">
+        <button
+          type="button"
+          className="w-full rounded bg-accent text-white text-sm py-2 font-medium transition-colors hover:bg-accent/90"
+          onClick={onCreateNote}
+        >
+          New note
+        </button>
+      </div>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">

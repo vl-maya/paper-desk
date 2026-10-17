@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { useWorkspaceStore } from "@/lib/store/workspace-store";
@@ -17,8 +24,10 @@ import {
   noteIsArchived,
 } from "@/lib/notes/filter-notes";
 import {
+  NOTES_SIDEBAR_PANEL_ID,
   readNotesSidebarCollapsedFromStorage,
-  writeNotesSidebarCollapsedToStorage,
+  subscribeNotesSidebarCollapsed,
+  toggleNotesSidebarCollapsedInStorage,
 } from "@/lib/notes/sidebar-preference";
 
 function notesByLatest(notes: NoteMeta[]): NoteMeta[] {
@@ -41,17 +50,31 @@ export function NotesPageContent() {
   const deleteNote = useWorkspaceStore((s) => s.deleteNote);
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useSyncExternalStore(
+    subscribeNotesSidebarCollapsed,
+    () => readNotesSidebarCollapsedFromStorage(),
+    () => false,
+  );
+  const sidebarPanelRef = useRef<HTMLDivElement>(null);
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
   /** Note id that should open in Write mode once (set on create). */
   const [writeOnOpenId, setWriteOnOpenId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setSidebarCollapsed(readNotesSidebarCollapsedFromStorage());
-  }, []);
+  const toggleSidebarCollapsed = useCallback(() => {
+    const wasCollapsed = readNotesSidebarCollapsedFromStorage();
+    toggleNotesSidebarCollapsedInStorage();
 
-  const setSidebarCollapsedPersisted = useCallback((collapsed: boolean) => {
-    setSidebarCollapsed(collapsed);
-    writeNotesSidebarCollapsedToStorage(collapsed);
+    if (!wasCollapsed) {
+      const panel = sidebarPanelRef.current;
+      const active = document.activeElement;
+      if (
+        panel &&
+        active instanceof HTMLElement &&
+        panel.contains(active)
+      ) {
+        sidebarToggleRef.current?.focus();
+      }
+    }
   }, []);
 
   const activeNotes = useMemo(() => {
@@ -183,30 +206,38 @@ export function NotesPageContent() {
   };
 
   return (
-    <div>
-      <h2 className="mb-4">
-        <NotesSidebarToggle
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsedPersisted(!sidebarCollapsed)}
-        />
+    <section
+      aria-labelledby="notes-page-heading"
+      className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-col overflow-hidden md:h-[calc(100dvh-7.5rem)]"
+    >
+      <h2 id="notes-page-heading" className="sr-only">
+        Notes
       </h2>
+      <header className="mb-4 shrink-0">
+        <NotesSidebarToggle
+          ref={sidebarToggleRef}
+          collapsed={sidebarCollapsed}
+          onToggle={toggleSidebarCollapsed}
+        />
+      </header>
       <div
-        className={`flex flex-col items-start transition-[gap] duration-300 ease-in-out motion-reduce:transition-none lg:flex-row ${
+        className={`flex min-h-0 flex-1 flex-col items-stretch transition-[gap] duration-300 ease-in-out motion-reduce:transition-none lg:flex-row ${
           sidebarCollapsed ? "gap-0" : "gap-4 lg:gap-5"
         }`}
       >
         <div
-          className={`grid w-full shrink-0 overflow-hidden transition-[grid-template-rows,width,opacity,transform] duration-300 ease-in-out motion-reduce:transform-none motion-reduce:transition-none lg:grid-rows-[1fr] ${
+          ref={sidebarPanelRef}
+          id={NOTES_SIDEBAR_PANEL_ID}
+          className={`grid min-h-0 w-full shrink-0 overflow-hidden transition-[grid-template-rows,width,opacity,transform] duration-300 ease-in-out motion-reduce:transform-none motion-reduce:transition-none lg:max-h-full lg:self-start lg:grid-rows-[1fr] ${
             sidebarCollapsed
               ? "grid-rows-[0fr] -translate-x-2 opacity-0 lg:w-0"
-              : "grid-rows-[1fr] translate-x-0 opacity-100 lg:w-64"
+              : "grid-rows-[1fr] max-h-[min(42dvh,22rem)] translate-x-0 opacity-100 lg:max-h-full lg:w-64"
           }`}
           aria-hidden={sidebarCollapsed}
           inert={sidebarCollapsed ? true : undefined}
         >
-          <div className="min-h-0 overflow-hidden lg:w-64">
+          <div className="min-h-0 max-h-full overflow-y-auto lg:w-64">
             <NotesSidebar
-              id="notes-sidebar"
               activeNotes={activeNotes}
               archivedNotes={archivedNotes}
               noteTags={snapshot.noteTags}
@@ -225,9 +256,10 @@ export function NotesPageContent() {
             />
           </div>
         </div>
-        <div className="flex-1 min-w-0 w-full">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col lg:min-h-[18rem]">
           {selected ? (
             <NoteEditor
+              className="min-h-0"
               note={selected}
               body={snapshot.noteBodies?.[selected.id] ?? ""}
               noteTags={snapshot.noteTags}
@@ -244,7 +276,7 @@ export function NotesPageContent() {
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

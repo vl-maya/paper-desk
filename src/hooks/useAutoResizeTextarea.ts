@@ -40,6 +40,18 @@ export function syncCodeMirrorViewHeight(
   view.scrollDOM.style.overflowY = contentH > maxPx ? "auto" : "auto";
 }
 
+/** Size CodeMirror to a fixed container height (scroll inside the editor). */
+export function syncCodeMirrorViewToContainer(
+  view: EditorView,
+  containerHeightPx: number,
+): void {
+  const next = Math.max(containerHeightPx, NOTE_EDITOR_MIN_HEIGHT_PX);
+  view.dom.style.height = `${next}px`;
+  view.dom.style.minHeight = `${NOTE_EDITOR_MIN_HEIGHT_PX}px`;
+  view.dom.style.maxHeight = `${next}px`;
+  view.scrollDOM.style.overflowY = "auto";
+}
+
 /** Sync textarea height between min and max viewport fraction; scroll when capped. */
 export function useAutoResizeTextarea(
   value: string,

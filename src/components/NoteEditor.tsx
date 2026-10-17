@@ -7,11 +7,7 @@ import { NoteTagMultiSelect } from "@/components/NoteTagMultiSelect";
 import { AskAnswerMarkdown } from "@/components/AskAnswerMarkdown";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { safeFormatDisplayDate } from "@/lib/dates/display";
-import {
-  maxEditorHeightPx,
-  NOTE_EDITOR_MIN_HEIGHT_PX,
-  useAutoResizeTextarea,
-} from "@/hooks/useAutoResizeTextarea";
+import { NOTE_EDITOR_MIN_HEIGHT_PX } from "@/hooks/useAutoResizeTextarea";
 import {
   readVimEnabledFromStorage,
   writeVimEnabledToStorage,
@@ -26,7 +22,7 @@ const NoteCodeMirrorEditor = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="w-full rounded border border-paper-line bg-card text-sm text-ink-muted p-2 font-mono"
+        className="flex min-h-0 flex-1 w-full rounded border border-paper-line bg-card text-sm text-ink-muted p-2 font-mono"
         style={{ minHeight: NOTE_EDITOR_MIN_HEIGHT_PX }}
       >
         Loading editor…
@@ -97,6 +93,7 @@ export function NoteEditor({
   onUnarchive,
   onDelete,
   initialPreview = true,
+  className,
 }: {
   note: NoteMeta;
   body: string;
@@ -109,6 +106,7 @@ export function NoteEditor({
   onDelete?: () => void;
   /** When false, opens in Write mode (used for newly created notes). */
   initialPreview?: boolean;
+  className?: string;
 }) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(body);
@@ -116,13 +114,6 @@ export function NoteEditor({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>("idle");
   const [vimEnabled, setVimEnabled] = useState(false);
-  const [editorExpanded, setEditorExpanded] = useState(false);
-
-  const { ref: textareaRef, syncHeight } = useAutoResizeTextarea(
-    content,
-    note.id,
-    editorExpanded,
-  );
 
   useEffect(() => {
     setVimEnabled(readVimEnabledFromStorage());
@@ -160,81 +151,84 @@ export function NoteEditor({
   const createdDate = safeFormatDisplayDate(note.createdAt);
 
   return (
-    <div className="paper-card p-4 space-y-3">
-      <div>
-        <input
-          className="w-full font-serif text-lg border-b border-paper-line bg-transparent pb-1 rounded px-1.5 -mx-1.5 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent selection:bg-accent/25 selection:text-ink transition-all caret-accent"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          aria-label="Note title"
-        />
-        {createdDate && (
-          <p className="text-xs text-ink-muted mt-1" title={note.createdAt}>
-            Created {createdDate}
-          </p>
-        )}
-      </div>
-      <NoteTagMultiSelect
-        tags={noteTags}
-        value={tagIds}
-        onChange={(next) => void onTagIdsChange(next)}
-      />
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={!preview ? "underline font-medium" : "text-ink-muted"}
-            onClick={() => setPreview(false)}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            className={preview ? "underline font-medium" : "text-ink-muted"}
-            onClick={() => setPreview(true)}
-          >
-            Preview
-          </button>
-        </div>
-        <span className="text-ink-muted">
-          Markdown supported (headings, lists, links, tables, **bold**).
-        </span>
-      </div>
-      {preview ? (
-        <div className="w-full min-h-[200px] border border-paper-line rounded p-3 bg-card text-sm">
-          {content.trim() ? (
-            <AskAnswerMarkdown content={content} />
-          ) : (
-            <p className="text-ink-muted italic">Nothing to preview yet.</p>
+    <div
+      className={`paper-card flex min-h-0 flex-1 flex-col p-4 ${className ?? ""}`}
+    >
+      <div className="shrink-0 space-y-3">
+        <div>
+          <input
+            className="w-full font-serif text-lg border-b border-paper-line bg-transparent pb-1 rounded px-1.5 -mx-1.5 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent selection:bg-accent/25 selection:text-ink transition-all caret-accent"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            aria-label="Note title"
+          />
+          {createdDate && (
+            <p className="text-xs text-ink-muted mt-1" title={note.createdAt}>
+              Created {createdDate}
+            </p>
           )}
         </div>
-      ) : vimEnabled ? (
-        <NoteCodeMirrorEditor
-          value={content}
-          resetKey={note.id}
-          expanded={editorExpanded}
-          placeholder="Write in Markdown…"
-          onChange={setContent}
+        <NoteTagMultiSelect
+          tags={noteTags}
+          value={tagIds}
+          onChange={(next) => void onTagIdsChange(next)}
         />
-      ) : (
-        <textarea
-          ref={textareaRef}
-          className="note-write-textarea w-full resize-none border border-paper-line rounded p-2 text-sm bg-card font-mono leading-relaxed caret-accent"
-          style={{
-            minHeight: NOTE_EDITOR_MIN_HEIGHT_PX,
-            maxHeight: maxEditorHeightPx(editorExpanded),
-            caretColor: "var(--accent)",
-          }}
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            requestAnimationFrame(() => syncHeight());
-          }}
-          placeholder="Write in Markdown…"
-        />
-      )}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={!preview ? "underline font-medium" : "text-ink-muted"}
+              onClick={() => setPreview(false)}
+            >
+              Write
+            </button>
+            <button
+              type="button"
+              className={preview ? "underline font-medium" : "text-ink-muted"}
+              onClick={() => setPreview(true)}
+            >
+              Preview
+            </button>
+          </div>
+          <span className="text-ink-muted">
+            Markdown supported (headings, lists, links, tables, **bold**).
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
+        {preview ? (
+          <div className="min-h-0 flex-1 overflow-y-auto rounded border border-paper-line bg-card p-3 text-sm">
+            {content.trim() ? (
+              <AskAnswerMarkdown content={content} />
+            ) : (
+              <p className="text-ink-muted italic">Nothing to preview yet.</p>
+            )}
+          </div>
+        ) : vimEnabled ? (
+          <NoteCodeMirrorEditor
+            value={content}
+            resetKey={note.id}
+            fillAvailable
+            placeholder="Write in Markdown…"
+            onChange={setContent}
+          />
+        ) : (
+          <textarea
+            className="note-write-textarea min-h-0 w-full flex-1 resize-none overflow-y-auto border border-paper-line rounded p-2 text-sm bg-card font-mono leading-relaxed caret-accent"
+            style={{
+              minHeight: NOTE_EDITOR_MIN_HEIGHT_PX,
+              caretColor: "var(--accent)",
+            }}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Write in Markdown…"
+          />
+        )}
+      </div>
+
       {!preview && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+        <div className="mt-2 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
           <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -245,16 +239,10 @@ export function NoteEditor({
             Vim
           </label>
           {vimEnabled && <span>Vim keys enabled.</span>}
-          <button
-            type="button"
-            className="underline hover:text-ink"
-            onClick={() => setEditorExpanded((v) => !v)}
-          >
-            {editorExpanded ? "Default height" : "Expand editor"}
-          </button>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+
+      <div className="-mx-4 mt-3 flex shrink-0 flex-wrap items-center gap-2 bg-card px-4">
         <button
           type="button"
           className="grid h-8 w-20 shrink-0 place-items-center rounded bg-accent text-sm text-white transition-colors disabled:opacity-80"
@@ -319,7 +307,7 @@ export function NoteEditor({
         {onUnarchive && (
           <button
             type="button"
-            className="h-8 shrink-0 rounded border border-paper-line bg-card px-3 text-sm text-ink transition-colors hover:bg-paper-line/40"
+            className="h-8 shrink-0 rounded border border-paper-line bg-card px-3 text-sm text-ink-muted transition-colors hover:bg-paper-line/40"
             onClick={onUnarchive}
           >
             Unarchive

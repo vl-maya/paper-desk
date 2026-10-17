@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useCallback, useMemo, useRef, useEffect } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -13,10 +13,15 @@ import {
   maxEditorHeightPx,
   NOTE_EDITOR_MIN_HEIGHT_PX,
   syncCodeMirrorViewHeight,
+  syncCodeMirrorViewToContainer,
 } from "@/hooks/useAutoResizeTextarea";
 
-function noteEditorAutoGrow(getExpanded: () => boolean): Extension {
+function noteEditorAutoGrow(
+  getExpanded: () => boolean,
+  getFillAvailable: () => boolean,
+): Extension {
   return EditorView.updateListener.of((update) => {
+    if (getFillAvailable()) return;
     if (!update.docChanged && !update.geometryChanged) return;
     syncCodeMirrorViewHeight(update.view, getExpanded());
   });
@@ -149,6 +154,8 @@ type NoteCodeMirrorEditorProps = {
   resetKey: string;
   placeholder?: string;
   expanded?: boolean;
+  /** Fill parent flex height instead of growing with content. */
+  fillAvailable?: boolean;
 };
 
 export function NoteCodeMirrorEditor({
@@ -157,16 +164,40 @@ export function NoteCodeMirrorEditor({
   resetKey,
   placeholder,
   expanded = false,
+  fillAvailable = false,
 }: NoteCodeMirrorEditorProps) {
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
+  const fillAvailableRef = useRef(fillAvailable);
+  fillAvailableRef.current = fillAvailable;
   const viewRef = useRef<EditorView | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const syncToContainer = useCallback(() => {
+    const view = viewRef.current;
+    const container = containerRef.current;
+    if (!view || !container) return;
+    syncCodeMirrorViewToContainer(view, container.clientHeight);
+  }, []);
 
   useEffect(() => {
-    if (viewRef.current) {
-      syncCodeMirrorViewHeight(viewRef.current, expanded);
+    if (!fillAvailable || !viewRef.current) return;
+    syncToContainer();
+  }, [fillAvailable, value, resetKey, syncToContainer]);
+
+  useEffect(() => {
+    if (!fillAvailable) {
+      if (viewRef.current) {
+        syncCodeMirrorViewHeight(viewRef.current, expanded);
+      }
+      return;
     }
-  }, [expanded, value, resetKey]);
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver(() => syncToContainer());
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [fillAvailable, expanded, syncToContainer]);
 
   const extensions = useMemo(
     () => [
@@ -177,29 +208,50 @@ export function NoteCodeMirrorEditor({
       paperThemeHighest,
       syntaxHighlighting(paperHighlight, { fallback: true }),
       EditorView.lineWrapping,
-      noteEditorAutoGrow(() => expandedRef.current),
+      noteEditorAutoGrow(
+        () => expandedRef.current,
+        () => fillAvailableRef.current,
+      ),
     ],
     [],
   );
 
   return (
-    <div className="note-codemirror-editor w-full rounded border border-paper-line bg-card text-sm overflow-hidden">
+    <div
+      ref={containerRef}
+      className={`note-codemirror-editor w-full rounded border border-paper-line bg-card text-sm overflow-hidden ${
+        fillAvailable ? "flex min-h-0 flex-1 flex-col" : ""
+      }`}
+    >
       <CodeMirror
         key={resetKey}
         value={value}
         theme="none"
         minHeight={`${NOTE_EDITOR_MIN_HEIGHT_PX}px`}
-        maxHeight={`${maxEditorHeightPx(expanded)}px`}
+        maxHeight={
+          fillAvailable
+            ? "100%"
+            : `${maxEditorHeightPx(expanded)}px`
+        }
         placeholder={placeholder}
         extensions={extensions}
         onChange={onChange}
         onUpdate={(update) => {
+          if (fillAvailableRef.current) {
+            syncToContainer();
+            return;
+          }
           if (update.docChanged || update.geometryChanged) {
             syncCodeMirrorViewHeight(update.view, expandedRef.current);
           }
         }}
         onCreateEditor={(view) => {
           viewRef.current = view;
+          if (fillAvailableRef.current) {
+            syncToContainer();
+            requestAnimationFrame(() => syncToContainer());
+            return;
+          }
           syncCodeMirrorViewHeight(view, expandedRef.current);
           requestAnimationFrame(() =>
             syncCodeMirrorViewHeight(view, expandedRef.current),
