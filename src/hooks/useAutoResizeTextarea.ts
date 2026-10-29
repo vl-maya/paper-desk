@@ -37,7 +37,8 @@ export function syncCodeMirrorViewHeight(
   view.dom.style.height = `${next}px`;
   view.dom.style.minHeight = `${NOTE_EDITOR_MIN_HEIGHT_PX}px`;
   view.dom.style.maxHeight = `${maxPx}px`;
-  view.scrollDOM.style.overflowY = contentH > maxPx ? "auto" : "auto";
+  view.scrollDOM.style.overflowX = "auto";
+  view.scrollDOM.style.overflowY = "auto";
 }
 
 /** Size CodeMirror to a fixed container height (scroll inside the editor). */
@@ -49,6 +50,7 @@ export function syncCodeMirrorViewToContainer(
   view.dom.style.height = `${next}px`;
   view.dom.style.minHeight = `${NOTE_EDITOR_MIN_HEIGHT_PX}px`;
   view.dom.style.maxHeight = `${next}px`;
+  view.scrollDOM.style.overflowX = "auto";
   view.scrollDOM.style.overflowY = "auto";
 }
 

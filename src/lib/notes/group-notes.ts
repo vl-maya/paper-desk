@@ -1,4 +1,5 @@
 import type { NoteMeta, NoteTag } from "@/lib/types/schemas";
+import { notesByTitleAsc } from "@/lib/notes/sort-notes";
 
 export type NoteTagGroup = {
   key: string;
@@ -8,13 +9,6 @@ export type NoteTagGroup = {
 };
 
 const UNTAGGED_KEY = "__untagged__";
-
-function notesByLatest(notes: NoteMeta[]): NoteMeta[] {
-  return [...notes].sort(
-    (a, b) =>
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-}
 
 export function noteHasAnyTag(note: NoteMeta): boolean {
   return (note.tagIds?.length ?? 0) > 0;
@@ -48,7 +42,7 @@ export function groupNotesByTags(
       key: tag.id,
       label: tag.name,
       tag,
-      notes: notesByLatest(list),
+      notes: notesByTitleAsc(list),
     });
   }
 
@@ -57,7 +51,7 @@ export function groupNotesByTags(
     groups.push({
       key: UNTAGGED_KEY,
       label: "Untagged",
-      notes: notesByLatest(untagged),
+      notes: notesByTitleAsc(untagged),
     });
   }
 

@@ -6,6 +6,7 @@ import type { NoteMeta, NoteTag } from "@/lib/types/schemas";
 import { safeFormatDisplayDate } from "@/lib/dates/display";
 import { filterNotesBySearch } from "@/lib/notes/filter-notes";
 import { groupNotesByTags, type NoteTagGroup } from "@/lib/notes/group-notes";
+import { notesByTitleAsc } from "@/lib/notes/sort-notes";
 import { tagPillStyle } from "@/lib/tasks/tag-display";
 
 export type NotesSidebarProps = {
@@ -217,11 +218,15 @@ export function NotesSidebar({
     [activeNotes, activeSearch, noteBodies, noteTags],
   );
 
-  const filteredArchived = useMemo(
-    () =>
-      filterNotesBySearch(archivedNotes, archivedSearch, noteBodies, noteTags),
-    [archivedNotes, archivedSearch, noteBodies, noteTags],
-  );
+  const filteredArchived = useMemo(() => {
+    const filtered = filterNotesBySearch(
+      archivedNotes,
+      archivedSearch,
+      noteBodies,
+      noteTags,
+    );
+    return notesByTitleAsc(filtered);
+  }, [archivedNotes, archivedSearch, noteBodies, noteTags]);
 
   const tagGroups = useMemo(
     () => groupNotesByTags(filteredActive, noteTags),

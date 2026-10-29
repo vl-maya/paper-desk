@@ -7,7 +7,7 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { vim } from "@replit/codemirror-vim";
 import { tags } from "@lezer/highlight";
 import { Prec } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import {
   maxEditorHeightPx,
@@ -15,6 +15,7 @@ import {
   syncCodeMirrorViewHeight,
   syncCodeMirrorViewToContainer,
 } from "@/hooks/useAutoResizeTextarea";
+import { markdownTableFormatGutter } from "@/lib/notes/markdown-table-format-gutter";
 
 function noteEditorAutoGrow(
   getExpanded: () => boolean,
@@ -71,9 +72,6 @@ const paperTheme = EditorView.theme(
     },
     ".cm-scroller": {
       overflow: "auto",
-    },
-    ".cm-gutters": {
-      display: "none",
     },
     "&.cm-focused": {
       outline: "none",
@@ -156,7 +154,25 @@ type NoteCodeMirrorEditorProps = {
   expanded?: boolean;
   /** Fill parent flex height instead of growing with content. */
   fillAvailable?: boolean;
+  vimEnabled?: boolean;
+  /** Cmd/Ctrl+S in the editor (Write mode). */
+  onSaveShortcut?: () => void;
 };
+
+function noteSaveKeymap(getSave: () => (() => void) | undefined): Extension {
+  return Prec.highest(
+    keymap.of([
+      {
+        key: "Mod-s",
+        preventDefault: true,
+        run: () => {
+          getSave()?.();
+          return true;
+        },
+      },
+    ]),
+  );
+}
 
 export function NoteCodeMirrorEditor({
   value,
@@ -165,7 +181,11 @@ export function NoteCodeMirrorEditor({
   placeholder,
   expanded = false,
   fillAvailable = false,
+  vimEnabled = false,
+  onSaveShortcut,
 }: NoteCodeMirrorEditorProps) {
+  const onSaveShortcutRef = useRef(onSaveShortcut);
+  onSaveShortcutRef.current = onSaveShortcut;
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const fillAvailableRef = useRef(fillAvailable);
@@ -202,25 +222,26 @@ export function NoteCodeMirrorEditor({
   const extensions = useMemo(
     () => [
       markdown(),
-      vim(),
+      ...(vimEnabled ? [vim()] : []),
+      noteSaveKeymap(() => onSaveShortcutRef.current),
+      markdownTableFormatGutter(),
       paperTheme,
       paperBaseTheme,
       paperThemeHighest,
       syntaxHighlighting(paperHighlight, { fallback: true }),
-      EditorView.lineWrapping,
       noteEditorAutoGrow(
         () => expandedRef.current,
         () => fillAvailableRef.current,
       ),
     ],
-    [],
+    [vimEnabled],
   );
 
   return (
     <div
       ref={containerRef}
-      className={`note-codemirror-editor w-full rounded border border-paper-line bg-card text-sm overflow-hidden ${
-        fillAvailable ? "flex min-h-0 flex-1 flex-col" : ""
+      className={`note-codemirror-editor min-w-0 w-full rounded border border-paper-line bg-card text-sm ${
+        fillAvailable ? "flex min-h-0 flex-1 flex-col overflow-auto" : "overflow-hidden"
       }`}
     >
       <CodeMirror

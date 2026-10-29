@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { NoteMeta, NoteTag } from "@/lib/types/schemas";
 import { NoteTagMultiSelect } from "@/components/NoteTagMultiSelect";
 import { AskAnswerMarkdown } from "@/components/AskAnswerMarkdown";
@@ -113,6 +113,7 @@ export function NoteEditor({
   const [preview, setPreview] = useState(initialPreview);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [savePhase, setSavePhase] = useState<SavePhase>("idle");
+  const saveInFlightRef = useRef(false);
   const [vimEnabled, setVimEnabled] = useState(false);
 
   useEffect(() => {
@@ -130,7 +131,12 @@ export function NoteEditor({
 
   useEffect(() => {
     setSavePhase("idle");
+    saveInFlightRef.current = false;
   }, [note.id]);
+
+  useEffect(() => {
+    if (savePhase === "idle") saveInFlightRef.current = false;
+  }, [savePhase]);
 
   useEffect(() => {
     if (savePhase === "check") {
@@ -147,6 +153,37 @@ export function NoteEditor({
     setVimEnabled(enabled);
     writeVimEnabledToStorage(enabled);
   }
+
+  const performSave = useCallback(() => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    void (async () => {
+      setSavePhase("saving");
+      const started = performance.now();
+      try {
+        await Promise.resolve(onSave(title, content));
+        const remaining = SAVE_SPINNER_MIN_MS - (performance.now() - started);
+        if (remaining > 0) await delay(remaining);
+        setSavePhase("check");
+      } catch {
+        setSavePhase("idle");
+        saveInFlightRef.current = false;
+      }
+    })();
+  }, [title, content, onSave]);
+
+  useEffect(() => {
+    if (preview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "s" && event.key !== "S") return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      event.preventDefault();
+      performSave();
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [preview, performSave]);
 
   const createdDate = safeFormatDisplayDate(note.createdAt);
 
@@ -196,7 +233,11 @@ export function NoteEditor({
         </div>
       </div>
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={`mt-3 flex min-h-0 flex-1 flex-col ${
+          preview ? "overflow-hidden" : "min-w-0 overflow-auto"
+        }`}
+      >
         {preview ? (
           <div className="min-h-0 flex-1 overflow-y-auto rounded border border-paper-line bg-card p-3 text-sm">
             {content.trim() ? (
@@ -205,24 +246,15 @@ export function NoteEditor({
               <p className="text-ink-muted italic">Nothing to preview yet.</p>
             )}
           </div>
-        ) : vimEnabled ? (
+        ) : (
           <NoteCodeMirrorEditor
             value={content}
             resetKey={note.id}
             fillAvailable
+            vimEnabled={vimEnabled}
             placeholder="Write in Markdown…"
             onChange={setContent}
-          />
-        ) : (
-          <textarea
-            className="note-write-textarea min-h-0 w-full flex-1 resize-none overflow-y-auto border border-paper-line rounded p-2 text-sm bg-card font-mono leading-relaxed caret-accent"
-            style={{
-              minHeight: NOTE_EDITOR_MIN_HEIGHT_PX,
-              caretColor: "var(--accent)",
-            }}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Write in Markdown…"
+            onSaveShortcut={performSave}
           />
         )}
       </div>
@@ -249,20 +281,7 @@ export function NoteEditor({
           disabled={savePhase !== "idle"}
           aria-busy={savePhase === "saving"}
           aria-live="polite"
-          onClick={() => {
-            void (async () => {
-              setSavePhase("saving");
-              const started = performance.now();
-              try {
-                await Promise.resolve(onSave(title, content));
-                const remaining = SAVE_SPINNER_MIN_MS - (performance.now() - started);
-                if (remaining > 0) await delay(remaining);
-                setSavePhase("check");
-              } catch {
-                setSavePhase("idle");
-              }
-            })();
-          }}
+          onClick={performSave}
         >
           <span
             className={`col-start-1 row-start-1 inline-flex items-center justify-center ${
